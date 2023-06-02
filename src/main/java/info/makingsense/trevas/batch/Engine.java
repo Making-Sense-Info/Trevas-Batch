@@ -68,7 +68,7 @@ public class Engine {
         // Write report
         List<String> content = Arrays.asList(sb.split("\n"));
         JavaSparkContext.fromSparkContext(spark.sparkContext())
-                .parallelize(List.of(content))
+                .parallelize(content)
                 .coalesce(1)
                 .saveAsTextFile(reportPath);
 
