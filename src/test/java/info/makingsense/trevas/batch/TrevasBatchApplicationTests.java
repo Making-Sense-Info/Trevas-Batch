@@ -13,7 +13,7 @@ class TrevasBatchApplicationTests {
         executeSpark("src/test/resources/input.csv",
                 "src/test/resources/output.csv",
                 "src/test/resources/script.txt",
-                "src/test/resources/report.md");
+                "src/test/resources/report");
     }
 
 }

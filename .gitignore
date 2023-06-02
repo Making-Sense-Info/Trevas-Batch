@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+test/resources/report*/**
+test/resources/ds/out/**
