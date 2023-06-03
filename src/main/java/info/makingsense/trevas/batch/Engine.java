@@ -78,7 +78,6 @@ public class Engine {
         SparkConf conf = Utils.loadSparkConfig(System.getenv("SPARK_CONF_DIR"));
         SparkSession.Builder sparkBuilder = SparkSession.builder()
                 .appName("trevas-batch");
-        sparkBuilder.config(conf);
         conf.set("spark.jars", String.join(",",
                 "/vtl-spark.jar",
                 "/vtl-model.jar",
@@ -86,6 +85,9 @@ public class Engine {
                 "/vtl-engine.jar",
                 "/vtl-jackson.jar"
         ));
+        // Overwrite reports
+        conf.set("spark.hadoop.validateOutputSpecs", "false");
+        sparkBuilder.config(conf);
         return sparkBuilder.getOrCreate();
     }
 
