@@ -22,7 +22,7 @@
 
     <description>Trevas batch</description>
     <properties>
-        <java.version>13</java.version>
+        <java.version>11</java.version>
         <trevas.version>1.0.1</trevas.version>
     </properties>
 
