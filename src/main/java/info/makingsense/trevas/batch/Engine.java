@@ -9,6 +9,8 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -21,9 +23,19 @@ import static info.makingsense.trevas.batch.utils.Time.getDateNow;
 import static info.makingsense.trevas.batch.utils.Utils.readDataset;
 import static info.makingsense.trevas.batch.utils.Utils.writeSparkDataset;
 
+@Configuration
 public class Engine {
 
     private static final Logger logger = LogManager.getLogger(Engine.class);
+
+    @Value("${input.ds.path}")
+    private static String inputDSPath;
+    @Value("${output.ds.path}")
+    private static String outputDSPath;
+    @Value("${script.path}")
+    private static String scriptPath;
+    @Value("${report.path}")
+    private static String reportPath;
 
     public static void executeSpark(String inputDSPath, String outputDSPath,
                                     String scriptPath, String reportPath) throws Exception {
@@ -86,12 +98,14 @@ public class Engine {
         SparkConf conf = Utils.loadSparkConfig(System.getenv("SPARK_CONF_DIR"));
         SparkSession.Builder sparkBuilder = SparkSession.builder()
                 .appName("trevas-batch");
-        conf.set("spark.jars", String.join(",",
-                "/vtl-spark.jar",
-                "/vtl-model.jar",
-                "/vtl-parser.jar",
-                "/vtl-engine.jar"
-        ));
+        if (!conf.get("spark.master").equals("local")) {
+            conf.set("spark.jars", String.join(",",
+                    "/vtl-spark.jar",
+                    "/vtl-model.jar",
+                    "/vtl-parser.jar",
+                    "/vtl-engine.jar"
+            ));
+        }
         // Overwrite reports
         conf.set("spark.hadoop.validateOutputSpecs", "false");
         sparkBuilder.config(conf);
