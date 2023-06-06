@@ -32,34 +32,10 @@ public class Utils {
                 Path path = Path.of(stringPath, "spark.conf");
                 org.apache.spark.util.Utils.loadDefaultSparkProperties(conf, path.normalize().toAbsolutePath().toString());
             }
-
             for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
-                var normalizedName = entry.getKey().toLowerCase().replace("_", ".");
-                if (normalizedName.startsWith("spark.")) {
-                    // TODO: find a better way to handle spark props
-                    if (normalizedName.contains("dynamicallocation")) {
-                        normalizedName = normalizedName.replace("dynamicallocation", "dynamicAllocation");
-                    }
-                    if (normalizedName.contains("shuffletracking")) {
-                        normalizedName = normalizedName.replace("shuffletracking", "shuffleTracking");
-                    }
-                    if (normalizedName.contains("minexecutors")) {
-                        normalizedName = normalizedName.replace("minexecutors", "minExecutors");
-                    }
-                    if (normalizedName.contains("maxexecutors")) {
-                        normalizedName = normalizedName.replace("maxexecutors", "maxExecutors");
-                    }
-                    if (normalizedName.contains("extrajavaoptions")) {
-                        normalizedName = normalizedName.replace("extrajavaoptions", "extraJavaOptions");
-                    }
-                    if (normalizedName.contains("pullpolicy")) {
-                        normalizedName = normalizedName.replace("pullpolicy", "pullPolicy");
-                    }
-                    conf.set(normalizedName, entry.getValue());
+                if (entry.getKey().startsWith("spark.")) {
+                    conf.set(entry.getKey(), entry.getValue());
                 }
-            }
-            if (!conf.contains("spark.master")) {
-                conf.set("spark.master", "local");
             }
             return conf;
         } catch (Exception ex) {
