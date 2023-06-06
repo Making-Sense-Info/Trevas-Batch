@@ -2,6 +2,8 @@ package info.makingsense.trevas.batch;
 
 import fr.insee.vtl.spark.SparkDataset;
 import info.makingsense.trevas.batch.utils.Utils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
@@ -21,10 +23,11 @@ import static info.makingsense.trevas.batch.utils.Utils.writeSparkDataset;
 
 public class Engine {
 
+    private static final Logger logger = LogManager.getLogger(Engine.class);
+
     public static void executeSpark(String inputDSPath, String outputDSPath,
                                     String scriptPath, String reportPath) throws Exception {
-        String sb = getDateNow() + "\n\n" +
-                "test";
+        String sb = getDateNow() + "\n\n" + "test";
         SparkSession spark = buildSparkSession();
         Bindings bindings = new SimpleBindings();
         ScriptEngine engine = Utils.initEngineWithSpark(bindings, spark);
@@ -79,7 +82,7 @@ public class Engine {
         }
     }
 
-    private static SparkSession buildSparkSession() throws Exception {
+    private static SparkSession buildSparkSession() {
         SparkConf conf = Utils.loadSparkConfig(System.getenv("SPARK_CONF_DIR"));
         SparkSession.Builder sparkBuilder = SparkSession.builder()
                 .appName("trevas-batch");
