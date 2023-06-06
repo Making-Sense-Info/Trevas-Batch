@@ -28,15 +28,6 @@ public class Engine {
 
     private static final Logger logger = LogManager.getLogger(Engine.class);
 
-    @Value("${input.ds.path}")
-    private static String inputDSPath;
-    @Value("${output.ds.path}")
-    private static String outputDSPath;
-    @Value("${script.path}")
-    private static String scriptPath;
-    @Value("${report.path}")
-    private static String reportPath;
-
     public static void executeSpark(String inputDSPath, String outputDSPath,
                                     String scriptPath, String reportPath) throws Exception {
         String sb = getDateNow() + "\n\n" + "test";
@@ -45,7 +36,7 @@ public class Engine {
         ScriptEngine engine = Utils.initEngineWithSpark(bindings, spark);
 
         // Load datasets
-        if (inputDSPath != null) {
+        if (inputDSPath != null && !inputDSPath.equals("")) {
             spark.read().csv(inputDSPath).collectAsList().forEach(f -> {
                 String name = f.getString(0);
                 String fileType = f.getString(1);
@@ -59,7 +50,7 @@ public class Engine {
         }
 
         // Load script
-        if (scriptPath != null) {
+        if (scriptPath != null && !scriptPath.equals("")) {
             String script = spark.read().textFile(scriptPath).collectAsList()
                     .stream().reduce((acc, current) -> acc + " \n\r" + current).orElse("");
             try {
@@ -70,7 +61,7 @@ public class Engine {
         }
 
         // Load datasets to write
-        if (outputDSPath != null) {
+        if (outputDSPath != null && !outputDSPath.equals("")) {
             Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
             Dataset<Row> outputDSCsv = spark.read().csv(outputDSPath);
             outputDSCsv.collectAsList().forEach(f -> {
@@ -85,7 +76,7 @@ public class Engine {
         }
 
         // Write report
-        if (reportPath != null) {
+        if (reportPath != null && !inputDSPath.equals("")) {
             List<String> content = Arrays.asList(sb.split("\n"));
             JavaSparkContext.fromSparkContext(spark.sparkContext())
                     .parallelize(content)

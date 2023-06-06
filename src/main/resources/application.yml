@@ -1,6 +1,6 @@
 input:
   ds:
-    path: "test"
+    path:
 output:
   ds:
     path:

@@ -3,25 +3,32 @@ package info.makingsense.trevas.batch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import static info.makingsense.trevas.batch.Engine.executeSpark;
 
 @SpringBootApplication
-public class TrevasBatch {
+public class TrevasBatch implements CommandLineRunner {
 
     private static final Logger logger = LogManager.getLogger();
 
     @Value("${input.ds.path}")
-    private static String inputDSPath;
+    private String inputDSPath;
     @Value("${output.ds.path}")
-    private static String outputDSPath;
+    private String outputDSPath;
     @Value("${script.path}")
-    private static String scriptPath;
+    private String scriptPath;
     @Value("${report.path}")
-    private static String reportPath;
+    private String reportPath;
 
     public static void main(String[] args) throws Exception {
+        SpringApplication.run(TrevasBatch.class, args);
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
         logger.error("Batch configuration:");
         logger.warn("- input path: " + inputDSPath);
         logger.info("- output path: " + outputDSPath);
