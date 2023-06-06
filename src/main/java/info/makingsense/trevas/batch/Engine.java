@@ -30,48 +30,53 @@ public class Engine {
         ScriptEngine engine = Utils.initEngineWithSpark(bindings, spark);
 
         // Load datasets
-        spark.read().csv(inputDSPath).collectAsList().forEach(f -> {
-            String name = f.getString(0);
-            String fileType = f.getString(1);
-            String filePath = f.getString(2);
-            try {
-                bindings.put(name, readDataset(spark, filePath, fileType));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+        if (inputDSPath != null) {
+            spark.read().csv(inputDSPath).collectAsList().forEach(f -> {
+                String name = f.getString(0);
+                String fileType = f.getString(1);
+                String filePath = f.getString(2);
+                try {
+                    bindings.put(name, readDataset(spark, filePath, fileType));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
 
         // Load script
-        String script = spark.read().textFile(scriptPath).collectAsList()
-                .stream().reduce((acc, current) -> acc + " \n\r" + current).orElse("");
-
-
-        try {
-            engine.eval(script);
-        } catch (Exception e) {
-            throw new Exception(e);
+        if (scriptPath != null) {
+            String script = spark.read().textFile(scriptPath).collectAsList()
+                    .stream().reduce((acc, current) -> acc + " \n\r" + current).orElse("");
+            try {
+                engine.eval(script);
+            } catch (Exception e) {
+                throw new Exception(e);
+            }
         }
-        Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
 
         // Load datasets to write
-        Dataset<Row> outputDSCsv = spark.read().csv(outputDSPath);
-        outputDSCsv.collectAsList().forEach(f -> {
-            String name = f.getString(0);
-            String filePath = f.getString(1);
-            try {
-                writeSparkDataset(filePath, (SparkDataset) outputBindings.get(name));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+        if (outputDSPath != null) {
+            Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
+            Dataset<Row> outputDSCsv = spark.read().csv(outputDSPath);
+            outputDSCsv.collectAsList().forEach(f -> {
+                String name = f.getString(0);
+                String filePath = f.getString(1);
+                try {
+                    writeSparkDataset(filePath, (SparkDataset) outputBindings.get(name));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
 
         // Write report
-        List<String> content = Arrays.asList(sb.split("\n"));
-        JavaSparkContext.fromSparkContext(spark.sparkContext())
-                .parallelize(content)
-                .coalesce(1)
-                .saveAsTextFile(reportPath);
-
+        if (reportPath != null) {
+            List<String> content = Arrays.asList(sb.split("\n"));
+            JavaSparkContext.fromSparkContext(spark.sparkContext())
+                    .parallelize(content)
+                    .coalesce(1)
+                    .saveAsTextFile(reportPath);
+        }
     }
 
     private static SparkSession buildSparkSession() throws Exception {

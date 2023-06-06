@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import static info.makingsense.trevas.batch.Engine.executeSpark;
 
 @SpringBootTest
-class TrevasBatchApplicationTests {
+class TrevasBatchTest {
 
     @Test
     void contextLoads() throws Exception {
