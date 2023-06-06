@@ -7,18 +7,14 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.SparkSession;
 
-import javax.script.*;
+import javax.script.Bindings;
+import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
 import java.nio.file.Path;
 import java.util.Map;
 
 public class Utils {
-
-    public static ScriptEngine initEngine(Bindings bindings) {
-        ScriptEngine engine = new ScriptEngineManager().getEngineByName("vtl");
-        ScriptContext context = engine.getContext();
-        context.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
-        return engine;
-    }
 
     public static ScriptEngine initEngineWithSpark(Bindings bindings, SparkSession spark) {
         ScriptEngine engine = new ScriptEngineManager().getEngineByName("vtl");
@@ -27,14 +23,6 @@ public class Utils {
         engine.put("$vtl.engine.processing_engine_names", "spark");
         engine.put("$vtl.spark.session", spark);
         return engine;
-    }
-
-    public static Bindings getBindings(Bindings input) {
-        Bindings output = new SimpleBindings();
-        input.forEach((k, v) -> {
-            if (!k.startsWith("$")) output.put(k, v);
-        });
-        return output;
     }
 
     public static SparkConf loadSparkConfig(String stringPath) {
@@ -77,31 +65,6 @@ public class Utils {
         } catch (Exception ex) {
             throw ex;
         }
-    }
-
-    public static Bindings getSparkBindings(Bindings input, Integer limit) {
-        Bindings output = new SimpleBindings();
-        input.forEach((k, v) -> {
-            if (!k.startsWith("$")) {
-                if (v instanceof SparkDataset) {
-                    Dataset<Row> sparkDs = ((SparkDataset) v).getSparkDataset();
-                    if (limit != null) output.put(k, new SparkDataset(sparkDs.limit(limit)));
-                    else output.put(k, new SparkDataset(sparkDs));
-                } else output.put(k, v);
-            }
-        });
-        return output;
-    }
-
-    public static void writeSparkS3Datasets(Bindings bindings, Map<String, String> s3toSave) {
-        s3toSave.forEach((name, path) -> {
-            SparkDataset dataset = (SparkDataset) bindings.get(name);
-            try {
-                writeSparkDataset(path, dataset);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
     }
 
     public static void writeSparkDataset(String path, SparkDataset dataset) {
