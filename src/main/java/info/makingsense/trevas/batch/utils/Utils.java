@@ -37,6 +37,9 @@ public class Utils {
                     conf.set(entry.getKey(), entry.getValue());
                 }
             }
+            if (!conf.contains("spark.master")) {
+                conf.set("spark.master", "local");
+            }
             return conf;
         } catch (Exception ex) {
             throw ex;
