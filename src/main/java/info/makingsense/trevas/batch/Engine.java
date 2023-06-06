@@ -87,8 +87,7 @@ public class Engine {
                 "/vtl-spark.jar",
                 "/vtl-model.jar",
                 "/vtl-parser.jar",
-                "/vtl-engine.jar",
-                "/vtl-jackson.jar"
+                "/vtl-engine.jar"
         ));
         // Overwrite reports
         conf.set("spark.hadoop.validateOutputSpecs", "false");
