@@ -1,0 +1,12 @@
+input:
+  ds:
+    path: "test"
+output:
+  ds:
+    path:
+script:
+  path:
+report:
+  path:
+spark:
+  master: "local"
