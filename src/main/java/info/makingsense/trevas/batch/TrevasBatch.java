@@ -1,9 +1,11 @@
 package info.makingsense.trevas.batch;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import static info.makingsense.trevas.batch.Engine.executeSpark;
 
+@SpringBootApplication
 public class TrevasBatch {
 
     @Value("${input.ds.path}")
