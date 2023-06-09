@@ -2,8 +2,6 @@ package info.makingsense.trevas.batch;
 
 import fr.insee.vtl.spark.SparkDataset;
 import info.makingsense.trevas.batch.utils.Utils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
@@ -20,15 +18,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import static info.makingsense.trevas.batch.utils.Time.getDateNow;
-import static info.makingsense.trevas.batch.utils.Time.getDateNowAsString;
 import static info.makingsense.trevas.batch.utils.Utils.readDataset;
 import static info.makingsense.trevas.batch.utils.Utils.writeSparkDataset;
-import static java.time.temporal.ChronoUnit.SECONDS;
+import static java.time.temporal.ChronoUnit.MILLIS;
 
 @Configuration
 public class Engine {
-
-    private static final Logger logger = LogManager.getLogger(Engine.class);
 
     public static void executeSpark(StringBuilder sb, String inputDSPath, String outputDSPath,
                                     String scriptPath, String reportPath) throws Exception {
@@ -36,14 +31,16 @@ public class Engine {
         LocalDateTime beforeSparkSession = LocalDateTime.now();
         SparkSession spark = buildSparkSession();
         LocalDateTime afterSparkSession = LocalDateTime.now();
-        long diff = SECONDS.between(beforeSparkSession, afterSparkSession);
+        long sparkSessionMs = MILLIS.between(beforeSparkSession, afterSparkSession);
         sb.append("### Spark session building\n\n");
-        sb.append("Session was opened in " + diff + " seconds\n\n");
+        sb.append("Session was opened in " + sparkSessionMs + " milliseconds\n\n");
         Bindings bindings = new SimpleBindings();
         ScriptEngine engine = Utils.initEngineWithSpark(bindings, spark);
 
         // Load datasets
         if (inputDSPath != null && !inputDSPath.equals("")) {
+            sb.append("### Loading input datasets\n\n");
+            sb.append("TODO\n\n");
             spark.read().csv(inputDSPath).collectAsList().forEach(f -> {
                 String name = f.getString(0);
                 String fileType = f.getString(1);
@@ -61,7 +58,12 @@ public class Engine {
             String script = spark.read().textFile(scriptPath).collectAsList()
                     .stream().reduce((acc, current) -> acc + " \n\r" + current).orElse("");
             try {
+                LocalDateTime beforeScript = LocalDateTime.now();
                 engine.eval(script);
+                LocalDateTime afterScript = LocalDateTime.now();
+                long scriptMs = MILLIS.between(beforeScript, afterScript);
+                sb.append("## Script execution\n\n");
+                sb.append("Script was executed in " + scriptMs + " milliseconds\n\n");
             } catch (Exception e) {
                 throw new Exception(e);
             }
@@ -69,6 +71,8 @@ public class Engine {
 
         // Load datasets to write
         if (outputDSPath != null && !outputDSPath.equals("")) {
+            sb.append("### Writing output datasets\n\n");
+            sb.append("TODO\n\n");
             Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
             Dataset<Row> outputDSCsv = spark.read().csv(outputDSPath);
             outputDSCsv.collectAsList().forEach(f -> {
@@ -81,6 +85,11 @@ public class Engine {
                 }
             });
         }
+
+        LocalDateTime afterAll = LocalDateTime.now();
+        long allMs = MILLIS.between(beforeSparkSession, afterAll);
+        sb.append("### Total time\n\n");
+        sb.append("Overal time was " + allMs + " milliseconds\n\n");
 
         // Write report
         if (reportPath != null && !inputDSPath.equals("")) {
