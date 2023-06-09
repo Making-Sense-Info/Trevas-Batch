@@ -9,29 +9,36 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.SimpleBindings;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
 import static info.makingsense.trevas.batch.utils.Time.getDateNow;
+import static info.makingsense.trevas.batch.utils.Time.getDateNowAsString;
 import static info.makingsense.trevas.batch.utils.Utils.readDataset;
 import static info.makingsense.trevas.batch.utils.Utils.writeSparkDataset;
+import static java.time.temporal.ChronoUnit.SECONDS;
 
 @Configuration
 public class Engine {
 
     private static final Logger logger = LogManager.getLogger(Engine.class);
 
-    public static void executeSpark(String inputDSPath, String outputDSPath,
+    public static void executeSpark(StringBuilder sb, String inputDSPath, String outputDSPath,
                                     String scriptPath, String reportPath) throws Exception {
-        String sb = getDateNow() + "\n\n" + "test";
+        sb.append("## Benchmarks\n\n");
+        LocalDateTime beforeSparkSession = LocalDateTime.now();
         SparkSession spark = buildSparkSession();
+        LocalDateTime afterSparkSession = LocalDateTime.now();
+        long diff = SECONDS.between(beforeSparkSession, afterSparkSession);
+        sb.append("### Spark session building\n\n");
+        sb.append("Session was opened in " + diff + " seconds\n\n");
         Bindings bindings = new SimpleBindings();
         ScriptEngine engine = Utils.initEngineWithSpark(bindings, spark);
 
@@ -77,11 +84,11 @@ public class Engine {
 
         // Write report
         if (reportPath != null && !inputDSPath.equals("")) {
-            List<String> content = Arrays.asList(sb.split("\n"));
+            List<String> content = Arrays.asList(sb.toString().split("\n"));
             JavaSparkContext.fromSparkContext(spark.sparkContext())
                     .parallelize(content)
                     .coalesce(1)
-                    .saveAsTextFile(reportPath);
+                    .saveAsTextFile(reportPath + "-" + getDateNow());
         }
     }
 

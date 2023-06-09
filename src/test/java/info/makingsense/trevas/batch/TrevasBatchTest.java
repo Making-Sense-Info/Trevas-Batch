@@ -10,7 +10,8 @@ class TrevasBatchTest {
 
     @Test
     void contextLoads() throws Exception {
-        executeSpark("src/test/resources/input.csv",
+        StringBuilder sb = new StringBuilder();
+        executeSpark(sb, "src/test/resources/input.csv",
                 "src/test/resources/output.csv",
                 "src/test/resources/script.txt",
                 "src/test/resources/report");

@@ -8,6 +8,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import static info.makingsense.trevas.batch.Engine.executeSpark;
+import static info.makingsense.trevas.batch.utils.Time.getDateNowAsString;
 
 @SpringBootApplication
 public class TrevasBatch implements CommandLineRunner {
@@ -29,11 +30,21 @@ public class TrevasBatch implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# Trevas Batch: " + getDateNowAsString() + "\n\n");
         logger.error("Batch configuration:");
+        sb.append("## Batch configuration\n\n");
         logger.warn("- input path: " + inputDSPath);
+        sb.append("- input path: " + inputDSPath);
         logger.info("- output path: " + outputDSPath);
+        sb.append("- output path: " + outputDSPath);
         logger.warn("- script path: " + scriptPath);
+        sb.append("- script path: " + scriptPath);
         logger.warn("- report path: " + reportPath);
-        executeSpark(inputDSPath, outputDSPath, scriptPath, reportPath);
+        sb.append("- report path: " + reportPath);
+        sb.append("\n\n");
+        sb.append("## Spark configuration\n\n");
+        sb.append("TODO\n\n");
+        executeSpark(sb, inputDSPath, outputDSPath, scriptPath, reportPath);
     }
 }
