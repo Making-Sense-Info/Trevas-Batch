@@ -1,13 +1,17 @@
 package info.makingsense.trevas.batch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.insee.vtl.spark.SparkDataset;
-import info.makingsense.trevas.batch.utils.Utils;
+import info.makingsense.trevas.batch.model.BatchConfiguration;
+import info.makingsense.trevas.batch.model.Input;
+import info.makingsense.trevas.batch.model.Output;
+import info.makingsense.trevas.batch.utils.SparkUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.springframework.context.annotation.Configuration;
+import scala.collection.immutable.Map;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -16,93 +20,167 @@ import javax.script.SimpleBindings;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static info.makingsense.trevas.batch.utils.Time.getDateNow;
-import static info.makingsense.trevas.batch.utils.Utils.readDataset;
-import static info.makingsense.trevas.batch.utils.Utils.writeSparkDataset;
+import static info.makingsense.trevas.batch.utils.NumberUtils.formatMs;
+import static info.makingsense.trevas.batch.utils.SparkUtils.readDataset;
+import static info.makingsense.trevas.batch.utils.SparkUtils.writeSparkDataset;
+import static info.makingsense.trevas.batch.utils.TimeUtils.getDateNow;
+import static info.makingsense.trevas.batch.utils.TimeUtils.getDateNowAsString;
 import static java.time.temporal.ChronoUnit.MILLIS;
 
-@Configuration
 public class Engine {
 
-    public static void executeSpark(StringBuilder sb, String inputDSPath, String outputDSPath,
-                                    String scriptPath, String reportPath) throws Exception {
-        sb.append("## Benchmarks\n\n");
-        LocalDateTime beforeSparkSession = LocalDateTime.now();
-        SparkSession spark = buildSparkSession();
-        LocalDateTime afterSparkSession = LocalDateTime.now();
-        long sparkSessionMs = MILLIS.between(beforeSparkSession, afterSparkSession);
-        sb.append("### Spark session building\n\n");
-        sb.append("Session was opened in " + sparkSessionMs + " milliseconds\n\n");
-        Bindings bindings = new SimpleBindings();
-        ScriptEngine engine = Utils.initEngineWithSpark(bindings, spark);
+    public static void executeSpark(String configPath, String reportPath) throws Exception {
+        if (configPath != null && !configPath.equals("")) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("# Trevas Batch: " + getDateNowAsString() + "\n\n");
 
-        // Load datasets
-        if (inputDSPath != null && !inputDSPath.equals("")) {
-            sb.append("### Loading input datasets\n\n");
-            sb.append("TODO\n\n");
-            spark.read().csv(inputDSPath).collectAsList().forEach(f -> {
-                String name = f.getString(0);
-                String fileType = f.getString(1);
-                String filePath = f.getString(2);
-                try {
-                    bindings.put(name, readDataset(spark, filePath, fileType));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+            StringBuilder sparkSessionStringBuilder = new StringBuilder();
+            LocalDateTime beforeSparkSession = LocalDateTime.now();
+            SparkSession spark = buildSparkSession();
+            LocalDateTime afterSparkSession = LocalDateTime.now();
+            long sparkSessionMs = MILLIS.between(beforeSparkSession, afterSparkSession);
+            sparkSessionStringBuilder.append("### Spark session building\n\n");
+            sparkSessionStringBuilder.append("Spark session was opened in " + formatMs(sparkSessionMs) + " milliseconds\n\n");
+
+            Dataset<Row> json = spark.read().text(configPath);
+
+            String collect = json.collectAsList().stream()
+                    .map(r -> (String) r.get(0))
+                    .collect(Collectors.joining(" "));
+
+            ObjectMapper mapper = new ObjectMapper();
+            BatchConfiguration batchConfiguration = mapper.readValue(collect, BatchConfiguration.class);
+            List<Input> inputs = batchConfiguration.getInputs();
+            List<Output> outputs = batchConfiguration.getOutputs();
+            String script = batchConfiguration.getScript();
+
+            sb.append("## Batch configuration\n\n");
+            sb.append("Configuration file fetched from: " + configPath + "\n\n");
+            sb.append("- Inputs: \n");
+            inputs.forEach(i -> {
+                sb.append("    - " + i.getName() + " (" + i.getFormat() + "): " + i.getLocation() + "\n");
             });
-        }
+            sb.append("- Outputs: \n");
+            outputs.forEach(i -> {
+                sb.append("    - " + i.getName() + ": " + i.getLocation() + "\n");
+            });
+            sb.append("- Script: \n");
+            sb.append("```\n");
+            sb.append(script + "\n");
+            sb.append("```\n\n");
 
-        // Load script
-        if (scriptPath != null && !scriptPath.equals("")) {
-            String script = spark.read().textFile(scriptPath).collectAsList()
-                    .stream().reduce((acc, current) -> acc + " \n\r" + current).orElse("");
-            try {
-                LocalDateTime beforeScript = LocalDateTime.now();
-                engine.eval(script);
-                LocalDateTime afterScript = LocalDateTime.now();
-                long scriptMs = MILLIS.between(beforeScript, afterScript);
-                sb.append("## Script execution\n\n");
-                sb.append("Script was executed in " + scriptMs + " milliseconds\n\n");
-            } catch (Exception e) {
-                throw new Exception(e);
+            sb.append("## Spark configuration\n\n");
+            Map<String, String> sparkConf = spark.conf().getAll();
+            String sparkMaster = sparkConf.get("spark.master").isEmpty() ? "" : sparkConf.get("spark.master").get();
+            sb.append("- spark.master: " + sparkMaster + "\n");
+            String sparkDriverMemory = sparkConf.get("spark.driver.memory").isEmpty() ? "" : sparkConf.get("spark.driver.memory").get();
+            sb.append("- spark.driver.memory: " + sparkDriverMemory + "\n");
+            String sparkExecutorMemory = sparkConf.get("spark.executor.memory").isEmpty() ? "" : sparkConf.get("spark.executor.memory").get();
+            sb.append("- spark.executor.memory: " + sparkExecutorMemory + "\n");
+            String sparkExecutorRequestCores = sparkConf.get("spark.kubernetes.executor.request.cores").isEmpty() ? "" : sparkConf.get("spark.kubernetes.executor.request.cores").get();
+            sb.append("- spark.kubernetes.executor.request.cores: " + sparkExecutorRequestCores + "\n");
+            String sparkDynamicAllocation = sparkConf.get("spark.dynamicAllocation.enabled").isEmpty() ? "" : sparkConf.get("spark.dynamicAllocation.enabled").get();
+            sb.append("- spark.dynamicAllocation.enabled: " + sparkDynamicAllocation + "\n");
+            String sparkDynamicAllocationMinExec = sparkConf.get("spark.dynamicAllocation.minExecutors").isEmpty() ? "" : sparkConf.get("spark.dynamicAllocation.minExecutors").get();
+            sb.append("- spark.dynamicAllocation.minExecutors: " + sparkDynamicAllocationMinExec + "\n");
+            String sparkDynamicAllocationMaxExec = sparkConf.get("spark.dynamicAllocation.maxExecutors").isEmpty() ? "" : sparkConf.get("spark.dynamicAllocation.maxExecutors").get();
+            sb.append("- spark.dynamicAllocation.maxExecutors: " + sparkDynamicAllocationMaxExec + "\n");
+            sb.append("\n");
+
+            sb.append("## Benchmarks\n\n");
+            sb.append(sparkSessionStringBuilder);
+
+            Bindings bindings = new SimpleBindings();
+            ScriptEngine engine = SparkUtils.initEngineWithSpark(bindings, spark);
+
+            LocalDateTime beforeRead = LocalDateTime.now();
+            // Load datasets
+            if (inputs != null) {
+                sb.append("### Loading input datasets\n\n");
+                inputs.forEach(input -> {
+                    String name = input.getName();
+                    String format = input.getFormat();
+                    String location = input.getLocation();
+                    try {
+                        LocalDateTime beforeReadDs = LocalDateTime.now();
+                        var ds = readDataset(spark, location, format);
+                        LocalDateTime afterReadDs = LocalDateTime.now();
+                        long readDs = MILLIS.between(beforeReadDs, afterReadDs);
+                        bindings.put(name, ds);
+                        int rows = ds.getDataStructure().size();
+                        int columns = ds.getDataPoints().size();
+                        sb.append("- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds (" + columns + " columns, " + rows + " rows)\n");
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             }
-        }
+            sb.append("\n");
+            LocalDateTime afterRead = LocalDateTime.now();
+            long readTime = MILLIS.between(beforeRead, afterRead);
 
-        // Load datasets to write
-        if (outputDSPath != null && !outputDSPath.equals("")) {
-            sb.append("### Writing output datasets\n\n");
-            sb.append("TODO\n\n");
-            Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
-            Dataset<Row> outputDSCsv = spark.read().csv(outputDSPath);
-            outputDSCsv.collectAsList().forEach(f -> {
-                String name = f.getString(0);
-                String filePath = f.getString(1);
+            LocalDateTime beforeScript = LocalDateTime.now();
+            // Load script
+            if (script != null && !script.equals("")) {
                 try {
-                    writeSparkDataset(filePath, (SparkDataset) outputBindings.get(name));
+                    engine.eval(script);
                 } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    throw new Exception(e);
                 }
-            });
-        }
+            }
+            LocalDateTime afterScript = LocalDateTime.now();
+            long scriptTime = MILLIS.between(beforeScript, afterScript);
+            sb.append("### VTL script execution\n\n");
+            sb.append("Script was executed in " + formatMs(scriptTime) + " milliseconds\n\n");
 
-        LocalDateTime afterAll = LocalDateTime.now();
-        long allMs = MILLIS.between(beforeSparkSession, afterAll);
-        sb.append("### Total time\n\n");
-        sb.append("Overal time was " + allMs + " milliseconds\n\n");
+            LocalDateTime beforeWrite = LocalDateTime.now();
+            // Load datasets to write
+            if (outputs != null) {
+                sb.append("### Writing output datasets\n\n");
+                Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
+                outputs.forEach(output -> {
+                    String name = output.getName();
+                    String location = output.getLocation();
+                    try {
+                        LocalDateTime beforeWriteDs = LocalDateTime.now();
+                        writeSparkDataset(location, (SparkDataset) outputBindings.get(name));
+                        LocalDateTime afterWriteDs = LocalDateTime.now();
+                        long writeDs = MILLIS.between(beforeWriteDs, afterWriteDs);
+                        sb.append("- dataset `" + name + "` was written in " + formatMs(writeDs) + " milliseconds\n");
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }
+            sb.append("\n");
+            LocalDateTime afterWrite = LocalDateTime.now();
+            long writeTime = MILLIS.between(beforeWrite, afterWrite);
 
-        // Write report
-        if (reportPath != null && !inputDSPath.equals("")) {
-            List<String> content = Arrays.asList(sb.toString().split("\n"));
-            JavaSparkContext.fromSparkContext(spark.sparkContext())
-                    .parallelize(content)
-                    .coalesce(1)
-                    .saveAsTextFile(reportPath + "-" + getDateNow());
+            sb.append("### Summary\n\n");
+            long allMs = sparkSessionMs + readTime + scriptTime + writeTime;
+            sb.append("|Task|Duration (ms)|Percentage (%)|\n");
+            sb.append("|-|:-:|:-:|\n");
+            sb.append("|Open Spark session|" + formatMs(sparkSessionMs) + "|" + sparkSessionMs / allMs * 100 + "|\n");
+            sb.append("|Spark inputs loading (" + inputs.size() + " ds)|" + formatMs(readTime) + "|" + readTime / allMs * 100 + "|\n");
+            sb.append("|VTL script execution|" + formatMs(scriptTime) + "|" + scriptTime / allMs * 100 + "|\n");
+            sb.append("|Spark outputs writing (" + outputs.size() + " ds)|" + formatMs(writeTime) + "|" + writeTime / allMs * 100 + "|\n");
+            sb.append("|**Total**|**" + formatMs(allMs) + "**|**100**|\n");
+
+            // Write report
+            if (reportPath != null && !reportPath.equals("")) {
+                List<String> content = Arrays.asList(sb.toString().split("\n"));
+                JavaSparkContext.fromSparkContext(spark.sparkContext())
+                        .parallelize(content)
+                        .coalesce(1)
+                        .saveAsTextFile(reportPath + "-" + getDateNow());
+            }
         }
     }
 
     private static SparkSession buildSparkSession() {
-        SparkConf conf = Utils.loadSparkConfig(System.getenv("SPARK_CONF_DIR"));
+        SparkConf conf = SparkUtils.loadSparkConfig(System.getenv("SPARK_CONF_DIR"));
         SparkSession.Builder sparkBuilder = SparkSession.builder()
                 .appName("trevas-batch");
         if (!conf.get("spark.master").equals("local")) {
@@ -118,5 +196,4 @@ public class Engine {
         sparkBuilder.config(conf);
         return sparkBuilder.getOrCreate();
     }
-
 }

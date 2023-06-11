@@ -14,7 +14,7 @@ import javax.script.ScriptEngineManager;
 import java.nio.file.Path;
 import java.util.Map;
 
-public class Utils {
+public class SparkUtils {
 
     public static ScriptEngine initEngineWithSpark(Bindings bindings, SparkSession spark) {
         ScriptEngine engine = new ScriptEngineManager().getEngineByName("vtl");

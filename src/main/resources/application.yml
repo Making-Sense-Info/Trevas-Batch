@@ -1,10 +1,4 @@
-input:
-  ds:
-    path:
-output:
-  ds:
-    path:
-script:
+config:
   path:
 report:
   path:

@@ -1,50 +1,27 @@
 package info.makingsense.trevas.batch;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import static info.makingsense.trevas.batch.Engine.executeSpark;
-import static info.makingsense.trevas.batch.utils.Time.getDateNowAsString;
 
 @SpringBootApplication
 public class TrevasBatch implements CommandLineRunner {
 
-    private static final Logger logger = LogManager.getLogger();
+    @Value("${config.path}")
+    private String configPath;
 
-    @Value("${input.ds.path}")
-    private String inputDSPath;
-    @Value("${output.ds.path}")
-    private String outputDSPath;
-    @Value("${script.path}")
-    private String scriptPath;
     @Value("${report.path}")
     private String reportPath;
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         SpringApplication.run(TrevasBatch.class, args);
     }
 
     @Override
     public void run(String... args) throws Exception {
-        StringBuilder sb = new StringBuilder();
-        sb.append("# Trevas Batch: " + getDateNowAsString() + "\n\n");
-        logger.error("Batch configuration:");
-        sb.append("## Batch configuration\n\n");
-        logger.warn("- input path: " + inputDSPath);
-        sb.append("- input path: " + inputDSPath + "\n");
-        logger.info("- output path: " + outputDSPath);
-        sb.append("- output path: " + outputDSPath + "\n");
-        logger.warn("- script path: " + scriptPath);
-        sb.append("- script path: " + scriptPath + "\n");
-        logger.warn("- report path: " + reportPath);
-        sb.append("- report path: " + reportPath + "\n");
-        sb.append("\n");
-        sb.append("## Spark configuration\n\n");
-        sb.append("TODO\n\n");
-        executeSpark(sb, inputDSPath, outputDSPath, scriptPath, reportPath);
+        executeSpark(configPath, reportPath);
     }
 }

@@ -1,3 +1,0 @@
-ds_out := ds1   [calc identifier id := id, long1 := cast(long1, integer), bool1 := cast(bool1, boolean)]
-                [filter bool1 and long1 < 100]
-                [keep id, string1];

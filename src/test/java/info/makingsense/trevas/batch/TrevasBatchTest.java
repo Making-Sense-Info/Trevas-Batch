@@ -9,11 +9,8 @@ import static info.makingsense.trevas.batch.Engine.executeSpark;
 class TrevasBatchTest {
 
     @Test
-    void contextLoads() throws Exception {
-        StringBuilder sb = new StringBuilder();
-        executeSpark(sb, "src/test/resources/input.csv",
-                "src/test/resources/output.csv",
-                "src/test/resources/script.txt",
+    void fakeBatch() throws Exception {
+        executeSpark("src/test/resources/input.json",
                 "src/test/resources/report");
     }
 
