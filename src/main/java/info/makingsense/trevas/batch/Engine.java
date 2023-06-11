@@ -162,10 +162,10 @@ public class Engine {
             long allMs = sparkSessionMs + readTime + scriptTime + writeTime;
             sb.append("|Task|Duration (ms)|Percentage (%)|\n");
             sb.append("|-|:-:|:-:|\n");
-            sb.append("|Open Spark session|" + formatMs(sparkSessionMs) + "|" + sparkSessionMs / allMs * 100 + "|\n");
-            sb.append("|Spark inputs loading (" + inputs.size() + " ds)|" + formatMs(readTime) + "|" + readTime / allMs * 100 + "|\n");
-            sb.append("|VTL script execution|" + formatMs(scriptTime) + "|" + scriptTime / allMs * 100 + "|\n");
-            sb.append("|Spark outputs writing (" + outputs.size() + " ds)|" + formatMs(writeTime) + "|" + writeTime / allMs * 100 + "|\n");
+            sb.append("|Open Spark session|" + formatMs(sparkSessionMs) + "|" + sparkSessionMs * 100 / allMs + "|\n");
+            sb.append("|Spark inputs loading (" + inputs.size() + " ds)|" + formatMs(readTime) + "|" + readTime * 100 / allMs + "|\n");
+            sb.append("|VTL script execution|" + formatMs(scriptTime) + "|" + scriptTime * 100 / allMs + "|\n");
+            sb.append("|Spark outputs writing (" + outputs.size() + " ds)|" + formatMs(writeTime) + "|" + writeTime * 100 / allMs + "|\n");
             sb.append("|**Total**|**" + formatMs(allMs) + "**|**100**|\n");
 
             // Write report
