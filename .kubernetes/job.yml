@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: trevas-batch
+spec:
+  ttlSecondsAfterFinished: 100
+  manualSelector: true
+  selector:
+    matchLabels:
+      app: trevas-batch
+  template:
+    metadata:
+      labels:
+        app: trevas-batch
+    spec:
+      serviceAccountName: trevas-batch-sa
+      hostname: trevas-batch-hostname
+      subdomain: trevas-batch
+      containers:
+        - name: trevas-batch
+          image: makingsenseinfo/trevas-batch:0.1.0
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "8"
+              memory: "16Gi"
+            limits:
+              cpu: "8"
+              memory: "16Gi"
+          env:
+            - name: spark.kubernetes.driver.pod.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          envFrom:
+            - configMapRef:
+                name: trevas-batch-config-map
+      restartPolicy: Never

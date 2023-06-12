@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: spark-role-trevas-batch
+  namespace: projet-vtl
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "pods"
+      - "services"
+      - "configmaps"
+    verbs:
+      - "list"
+      - "create"
+      - "delete"
+      - "watch"
+      - "update"
+      - "get"
+      - "patch"

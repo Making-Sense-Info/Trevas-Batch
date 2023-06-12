@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: trevas-batch-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: trevas-batch-sa
+    namespace: projet-vtl
+roleRef:
+  kind: Role
+  name: spark-role-trevas-batch
+  apiGroup: rbac.authorization.k8s.io
