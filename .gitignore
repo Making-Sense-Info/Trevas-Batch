@@ -35,3 +35,4 @@ build/
 
 src/test/resources/report*/**
 src/test/resources/ds/out/**
+.kubernetes/custom/**
