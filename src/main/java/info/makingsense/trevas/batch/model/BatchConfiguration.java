@@ -10,12 +10,6 @@ public class BatchConfiguration {
 
     private String script;
 
-    public BatchConfiguration(List<Input> inputs, List<Output> outputs, String script) {
-        this.inputs = inputs;
-        this.outputs = outputs;
-        this.script = script;
-    }
-
     public BatchConfiguration() {
     }
 

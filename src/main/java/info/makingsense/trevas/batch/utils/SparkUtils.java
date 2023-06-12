@@ -1,11 +1,9 @@
 package info.makingsense.trevas.batch.utils;
 
 import fr.insee.vtl.spark.SparkDataset;
+import info.makingsense.trevas.batch.model.Input;
 import org.apache.spark.SparkConf;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SaveMode;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -53,22 +51,59 @@ public class SparkUtils {
                 .parquet(path);
     }
 
-    public static SparkDataset readDataset(SparkSession spark, String path, String fileType) throws Exception {
+    public static SparkDataset readDataset(SparkSession spark, Input input) throws Exception {
         Dataset<Row> dataset;
+        String location = input.getLocation();
+        String format = input.getFormat();
         try {
-            if ("csv".equals(fileType))
+            if ("csv".equals(format))
                 dataset = spark.read()
                         .option("delimiter", ";")
                         .option("header", "true")
-                        .csv(path);
-            else if ("parquet".equals(fileType)) dataset = spark.read().parquet(path);
-            else if ("sas".equals(fileType)) dataset = spark.read()
+                        .csv(location);
+            else if ("parquet".equals(format)) dataset = spark.read().parquet(location);
+            else if ("sas".equals(format)) dataset = spark.read()
                     .format("com.github.saurfang.sas.spark")
-                    .load(path);
-            else throw new Exception("Unknow S3 file type: " + fileType);
+                    .load(location);
+            else if ("jdbc".equals(format)) dataset = readJDBCDataset(spark, input);
+            else throw new Exception("Unknow S3 file type: " + format);
         } catch (Exception e) {
-            throw new Exception("An error has occured while loading: " + path);
+            throw new Exception("An error has occured while loading: " + location);
         }
         return new SparkDataset(dataset);
+    }
+
+    private static String getJDBCPrefix(String dbType) throws Exception {
+        if (dbType.equals("postgre")) return "jdbc:postgresql://";
+        if (dbType.equals("mariadb")) return "jdbc:mysql://";
+        throw new Exception("Unsupported dbtype: " + dbType);
+    }
+
+    private static Dataset<Row> readJDBCDataset(SparkSession spark, Input input) throws Exception {
+        String jdbcPrefix = "";
+        String dbType = input.getDbType();
+        String location = input.getLocation();
+        String user = input.getUser();
+        String password = input.getPassword();
+        String query = input.getQuery();
+        try {
+            jdbcPrefix = getJDBCPrefix(dbType);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception(e);
+        }
+        DataFrameReader dfReader = spark.read().format("jdbc")
+                .option("url", jdbcPrefix + location)
+                .option("user", user)
+                .option("password", password)
+                .option("query", query);
+        if (dbType.equals("postgre")) {
+            dfReader.option("driver", "net.postgis.jdbc.DriverWrapper")
+                    .option("driver", "org.postgresql.Driver");
+        }
+        if (dbType.equals("mariadb")) {
+            dfReader.option("driver", "com.mysql.cj.jdbc.Driver");
+        }
+        return dfReader.load();
     }
 }

@@ -101,11 +101,9 @@ public class Engine {
                 sb.append("### Loading input datasets\n\n");
                 inputs.forEach(input -> {
                     String name = input.getName();
-                    String format = input.getFormat();
-                    String location = input.getLocation();
                     try {
                         LocalDateTime beforeReadDs = LocalDateTime.now();
-                        var ds = readDataset(spark, location, format);
+                        var ds = readDataset(spark, input);
                         LocalDateTime afterReadDs = LocalDateTime.now();
                         long readDs = MILLIS.between(beforeReadDs, afterReadDs);
                         bindings.put(name, ds);

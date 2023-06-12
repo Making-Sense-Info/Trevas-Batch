@@ -6,11 +6,6 @@ public class Output {
 
     private String location;
 
-    public Output(String name, String location) {
-        this.name = name;
-        this.location = location;
-    }
-
     public Output() {
     }
 
