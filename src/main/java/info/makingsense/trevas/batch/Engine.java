@@ -109,9 +109,9 @@ public class Engine {
                         LocalDateTime afterReadDs = LocalDateTime.now();
                         long readDs = MILLIS.between(beforeReadDs, afterReadDs);
                         bindings.put(name, ds);
-                        int rows = ds.getDataStructure().size();
-                        int columns = ds.getDataPoints().size();
-                        sb.append("- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds (" + columns + " columns, " + rows + " rows)\n");
+                        int columns = ds.getDataStructure().size();
+                        int rows = ds.getDataPoints().size();
+                        sb.append("- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n");
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -121,23 +121,24 @@ public class Engine {
             LocalDateTime afterRead = LocalDateTime.now();
             long readTime = MILLIS.between(beforeRead, afterRead);
 
-            LocalDateTime beforeScript = LocalDateTime.now();
             // Load script
+            LocalDateTime beforeScript = LocalDateTime.now();
+            long scriptTime = 0;
             if (script != null && !script.equals("")) {
                 try {
                     engine.eval(script);
                 } catch (Exception e) {
                     throw new Exception(e);
                 }
+                LocalDateTime afterScript = LocalDateTime.now();
+                scriptTime = MILLIS.between(beforeScript, afterScript);
+                sb.append("### VTL script execution\n\n");
+                sb.append("Script was executed in " + formatMs(scriptTime) + " milliseconds\n\n");
             }
-            LocalDateTime afterScript = LocalDateTime.now();
-            long scriptTime = MILLIS.between(beforeScript, afterScript);
-            sb.append("### VTL script execution\n\n");
-            sb.append("Script was executed in " + formatMs(scriptTime) + " milliseconds\n\n");
 
             LocalDateTime beforeWrite = LocalDateTime.now();
             // Load datasets to write
-            if (outputs != null) {
+            if (outputs != null && outputs.size() > 0) {
                 sb.append("### Writing output datasets\n\n");
                 Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
                 outputs.forEach(output -> {
@@ -153,8 +154,8 @@ public class Engine {
                         throw new RuntimeException(e);
                     }
                 });
+                sb.append("\n");
             }
-            sb.append("\n");
             LocalDateTime afterWrite = LocalDateTime.now();
             long writeTime = MILLIS.between(beforeWrite, afterWrite);
 
