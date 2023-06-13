@@ -37,7 +37,7 @@ Fill `config-map` values and apply.
             "format": "jdbc",
             "user": "...",
             "password": "...",
-            "url": "...",
+            "location": "...",
             "dbType": "postgre",
             "query": "SELECT * FROM my_table"
         }
