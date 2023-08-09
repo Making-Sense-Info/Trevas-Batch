@@ -71,6 +71,11 @@
             <artifactId>vtl-spark</artifactId>
             <version>${trevas.version}</version>
         </dependency>
+        <dependency>
+            <groupId>fr.insee.trevas</groupId>
+            <artifactId>vtl-jackson</artifactId>
+            <version>${trevas.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.hadoop</groupId>
