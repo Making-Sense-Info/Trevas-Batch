@@ -6,6 +6,8 @@ import info.makingsense.trevas.batch.model.BatchConfiguration;
 import info.makingsense.trevas.batch.model.Input;
 import info.makingsense.trevas.batch.model.Output;
 import info.makingsense.trevas.batch.utils.SparkUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
@@ -31,6 +33,8 @@ import static java.time.temporal.ChronoUnit.MILLIS;
 
 public class Engine {
 
+    private static final Logger logger = LogManager.getLogger(Engine.class);
+
     public static void executeSpark(String configPath, String reportPath) throws Exception {
         if (configPath != null && !configPath.equals("")) {
             StringBuilder sb = new StringBuilder();
@@ -42,7 +46,9 @@ public class Engine {
             LocalDateTime afterSparkSession = LocalDateTime.now();
             long sparkSessionMs = MILLIS.between(beforeSparkSession, afterSparkSession);
             sparkSessionStringBuilder.append("### Spark session building\n\n");
-            sparkSessionStringBuilder.append("Spark session was opened in " + formatMs(sparkSessionMs) + " milliseconds\n\n");
+            String sessionOpened = "Spark session was opened in " + formatMs(sparkSessionMs) + " milliseconds\n\n";
+            sparkSessionStringBuilder.append(sessionOpened);
+            logger.info(sessionOpened);
 
             Dataset<Row> json = spark.read().text(configPath);
 
@@ -100,6 +106,7 @@ public class Engine {
             if (inputs != null) {
                 sb.append("### Loading input datasets\n\n");
                 inputs.forEach(input -> {
+                    logger.info("Start to load inputs");
                     String name = input.getName();
                     try {
                         LocalDateTime beforeReadDs = LocalDateTime.now();
@@ -107,9 +114,12 @@ public class Engine {
                         LocalDateTime afterReadDs = LocalDateTime.now();
                         long readDs = MILLIS.between(beforeReadDs, afterReadDs);
                         bindings.put(name, ds);
-                        int columns = ds.getDataStructure().size();
-                        int rows = ds.getDataPoints().size();
-                        sb.append("- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n");
+                        // temp disable, not lazy?
+//                        int columns = ds.getDataStructure().size();
+//                        int rows = ds.getDataPoints().size();
+                        String dsRead = "- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds"; // (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n";
+                        sb.append(dsRead);
+                        logger.info(dsRead);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -118,6 +128,7 @@ public class Engine {
             sb.append("\n");
             LocalDateTime afterRead = LocalDateTime.now();
             long readTime = MILLIS.between(beforeRead, afterRead);
+            logger.info("Inputs loaded in " + readTime + "ms");
 
             // Load script
             LocalDateTime beforeScript = LocalDateTime.now();
@@ -131,14 +142,29 @@ public class Engine {
                 LocalDateTime afterScript = LocalDateTime.now();
                 scriptTime = MILLIS.between(beforeScript, afterScript);
                 sb.append("### VTL script execution\n\n");
-                sb.append("Script was executed in " + formatMs(scriptTime) + " milliseconds\n\n");
+                String scriptExecuted = "Script was executed in " + formatMs(scriptTime) + " milliseconds\n\n";
+                sb.append(scriptExecuted);
+                logger.info(scriptExecuted);
             }
+
+            Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
+//            outputBindings.forEach((k, v) -> {
+//                if (v instanceof SparkDataset) {
+//                    Dataset<Row> sparkDs = ((SparkDataset) v).getSparkDataset();
+//                    System.out.println("----------");
+//                    System.out.println(k);
+//                    sparkDs.explain(false);
+//                    System.out.println("----------");
+//                    sparkDs.explain(true);
+//                    System.out.println("----------");
+//                }
+//            });
 
             LocalDateTime beforeWrite = LocalDateTime.now();
             // Load datasets to write
-            if (outputs != null && outputs.size() > 0) {
+            if (outputs.size() > 0) {
                 sb.append("### Writing output datasets\n\n");
-                Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
+                logger.info("Start to write outputs");
                 outputs.forEach(output -> {
                     String name = output.getName();
                     String location = output.getLocation();
@@ -147,7 +173,9 @@ public class Engine {
                         writeSparkDataset(location, (SparkDataset) outputBindings.get(name));
                         LocalDateTime afterWriteDs = LocalDateTime.now();
                         long writeDs = MILLIS.between(beforeWriteDs, afterWriteDs);
-                        sb.append("- dataset `" + name + "` was written in " + formatMs(writeDs) + " milliseconds\n");
+                        String outputWritten = "- dataset `" + name + "` was written in " + formatMs(writeDs) + " milliseconds\n";
+                        sb.append(outputWritten);
+                        logger.info(outputWritten);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -156,6 +184,7 @@ public class Engine {
             }
             LocalDateTime afterWrite = LocalDateTime.now();
             long writeTime = MILLIS.between(beforeWrite, afterWrite);
+            logger.info("Outputs written in " + writeTime + "ms");
 
             sb.append("### Summary\n\n");
             long allMs = sparkSessionMs + readTime + scriptTime + writeTime;
@@ -187,7 +216,8 @@ public class Engine {
                     "/vtl-spark.jar",
                     "/vtl-model.jar",
                     "/vtl-parser.jar",
-                    "/vtl-engine.jar"
+                    "/vtl-engine.jar",
+                    "/vtl-jackson.jar"
             ));
         }
         // Overwrite reports
