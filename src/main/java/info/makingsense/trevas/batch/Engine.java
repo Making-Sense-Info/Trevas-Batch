@@ -115,9 +115,10 @@ public class Engine {
                         long readDs = MILLIS.between(beforeReadDs, afterReadDs);
                         bindings.put(name, ds);
                         // temp disable, not lazy?
-//                        int columns = ds.getDataStructure().size();
-//                        int rows = ds.getDataPoints().size();
-                        String dsRead = "- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds\n"; // (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n";
+                        int columns = ds.getDataStructure().size();
+                        Dataset<Row> inputSparkDataset = ds.getSparkDataset();
+                        Long rows = inputSparkDataset.count();
+                        String dsRead = "- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n";
                         sb.append(dsRead);
                         logger.info(dsRead);
                     } catch (Exception e) {
@@ -151,7 +152,7 @@ public class Engine {
             sb.append("### Execution plan\n\n");
             outputBindings.forEach((k, v) -> {
                 if (v instanceof SparkDataset) {
-                    sb.append("#### " + k + "\n");
+                    sb.append("#### " + k + "\n\n");
                     Dataset<Row> sparkDs = ((SparkDataset) v).getSparkDataset();
                     String logicalPlan = sparkDs.queryExecution().logical().toString();
                     sb.append("- logical plan:\n" + logicalPlan + "\n");
