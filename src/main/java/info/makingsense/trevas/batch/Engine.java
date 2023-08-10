@@ -117,7 +117,7 @@ public class Engine {
                         // temp disable, not lazy?
 //                        int columns = ds.getDataStructure().size();
 //                        int rows = ds.getDataPoints().size();
-                        String dsRead = "- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds"; // (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n";
+                        String dsRead = "- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds\n"; // (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n";
                         sb.append(dsRead);
                         logger.info(dsRead);
                     } catch (Exception e) {
@@ -148,17 +148,19 @@ public class Engine {
             }
 
             Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
-//            outputBindings.forEach((k, v) -> {
-//                if (v instanceof SparkDataset) {
-//                    Dataset<Row> sparkDs = ((SparkDataset) v).getSparkDataset();
-//                    System.out.println("----------");
-//                    System.out.println(k);
-//                    sparkDs.explain(false);
-//                    System.out.println("----------");
-//                    sparkDs.explain(true);
-//                    System.out.println("----------");
-//                }
-//            });
+            sb.append("### Execution plan\n\n");
+            outputBindings.forEach((k, v) -> {
+                if (v instanceof SparkDataset) {
+                    sb.append("#### " + k + "\n");
+                    Dataset<Row> sparkDs = ((SparkDataset) v).getSparkDataset();
+                    String logicalPlan = sparkDs.queryExecution().logical().toString();
+                    sb.append("- logical plan:\n" + logicalPlan + "\n");
+                    String optimizedPlan = sparkDs.queryExecution().optimizedPlan().toString();
+                    sb.append("- optimized plan:\n" + optimizedPlan + "\n");
+                    String executedPlan = sparkDs.queryExecution().executedPlan().toString();
+                    sb.append("- executed plan:\n" + executedPlan + "\n\n");
+                }
+            });
 
             LocalDateTime beforeWrite = LocalDateTime.now();
             // Load datasets to write
