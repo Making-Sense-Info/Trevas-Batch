@@ -22,6 +22,7 @@ import javax.script.SimpleBindings;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static info.makingsense.trevas.batch.utils.NumberUtils.formatMs;
@@ -101,7 +102,8 @@ public class Engine {
             Bindings bindings = new SimpleBindings();
             ScriptEngine engine = SparkUtils.initEngineWithSpark(bindings, spark);
 
-            LocalDateTime beforeRead = LocalDateTime.now();
+            AtomicLong readTime = new AtomicLong(0L);
+                    //MILLIS.between(beforeRead, afterRead);
             // Load datasets
             if (inputs != null) {
                 sb.append("### Loading input datasets\n\n");
@@ -113,6 +115,7 @@ public class Engine {
                         var ds = readDataset(spark, input);
                         LocalDateTime afterReadDs = LocalDateTime.now();
                         long readDs = MILLIS.between(beforeReadDs, afterReadDs);
+                        readTime.set(readTime.get() + readDs);
                         bindings.put(name, ds);
                         // temp disable, not lazy?
                         int columns = ds.getDataStructure().size();
@@ -128,7 +131,6 @@ public class Engine {
             }
             sb.append("\n");
             LocalDateTime afterRead = LocalDateTime.now();
-            long readTime = MILLIS.between(beforeRead, afterRead);
             logger.info("Inputs loaded in " + readTime + "ms");
 
             // Load script
@@ -149,13 +151,15 @@ public class Engine {
             }
 
             Bindings outputBindings = engine.getContext().getBindings(ScriptContext.ENGINE_SCOPE);
-            sb.append("### Execution plan\n\n");
-            outputBindings.forEach((k, v) -> {
-                if (v instanceof SparkDataset) {
-                    sb.append("#### " + k + "\n\n");
-                    Dataset<Row> sparkDs = ((SparkDataset) v).getSparkDataset();
+            sb.append("### Outputs execution plan\n\n");
+            outputs.forEach(o -> {
+                Object ds = outputBindings.get(o.getName());
+                if (ds instanceof SparkDataset) {
+                    sb.append("#### " + o.getName() + "\n\n");
+                    Dataset<Row> sparkDs = ((SparkDataset) ds).getSparkDataset();
                     String logicalPlan = sparkDs.queryExecution().logical().toString();
                     sb.append("- logical plan:\n" + logicalPlan + "\n");
+                    System.out.println("- logical plan:\n" + logicalPlan + "\n");
                     String optimizedPlan = sparkDs.queryExecution().optimizedPlan().toString();
                     sb.append("- optimized plan:\n" + optimizedPlan + "\n");
                     String executedPlan = sparkDs.queryExecution().executedPlan().toString();
@@ -190,11 +194,11 @@ public class Engine {
             logger.info("Outputs written in " + writeTime + "ms");
 
             sb.append("### Summary\n\n");
-            long allMs = sparkSessionMs + readTime + scriptTime + writeTime;
+            long allMs = sparkSessionMs + readTime.get() + scriptTime + writeTime;
             sb.append("|Task|Duration (ms)|Percentage (%)|\n");
             sb.append("|-|:-:|:-:|\n");
             sb.append("|Open Spark session|" + formatMs(sparkSessionMs) + "|" + sparkSessionMs * 100 / allMs + "|\n");
-            sb.append("|Spark inputs loading (" + inputs.size() + " ds)|" + formatMs(readTime) + "|" + readTime * 100 / allMs + "|\n");
+            sb.append("|Spark inputs loading (" + inputs.size() + " ds)|" + formatMs(readTime.get()) + "|" + readTime.get() * 100 / allMs + "|\n");
             sb.append("|VTL script execution|" + formatMs(scriptTime) + "|" + scriptTime * 100 / allMs + "|\n");
             sb.append("|Spark outputs writing (" + outputs.size() + " ds)|" + formatMs(writeTime) + "|" + writeTime * 100 / allMs + "|\n");
             sb.append("|**Total**|**" + formatMs(allMs) + "**|**100**|\n");
