@@ -18,7 +18,7 @@ spec:
       subdomain: trevas-batch
       containers:
         - name: trevas-batch
-          image: makingsenseinfo/trevas-batch:0.1.1
+          image: makingsenseinfo/trevas-batch:0.2.0
           imagePullPolicy: IfNotPresent
           resources:
             requests:
