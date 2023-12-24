@@ -7,7 +7,7 @@ data:
   spark.kubernetes.namespace: "projet-vtl"
   spark.driver.memory: "8g"
   spark.executor.memory: "16g"
-  spark.kubernetes.container.image: "inseefrlab/spark-hadoop:1.0.2"
+  spark.kubernetes.container.image: "inseefrlab/spark-hadoop:1.2.0"
   spark.kubernetes.container.image.pullPolicy: "IfNotPresent"
   spark.kubernetes.executor.request.cores: "200m"
   spark.dynamicAllocation.enabled: "true"
