@@ -1,4 +1,4 @@
-FROM openjdk:11-jre-slim
+FROM openjdk:17-jdk-slim
 
 COPY target/lib /lib/
 
@@ -10,4 +10,4 @@ COPY target/lib/vtl-jackson-*.jar /vtl-jackson.jar
 
 COPY target/trevas-batch*.jar.original /lib/trevas-batch.jar
 
-ENTRYPOINT ["java", "-cp", "/lib/*", "info.makingsense.trevas.batch.TrevasBatch"]
+ENTRYPOINT ["java", "-cp", "/lib/*", "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED", "info.makingsense.trevas.batch.TrevasBatch"]
