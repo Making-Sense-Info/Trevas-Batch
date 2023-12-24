@@ -37,9 +37,9 @@ public class Engine {
     private static final Logger logger = LogManager.getLogger(Engine.class);
 
     public static void executeSpark(String configPath, String reportPath) throws Exception {
-        if (configPath != null && !configPath.equals("")) {
+        if (configPath != null && !configPath.isEmpty()) {
             StringBuilder sb = new StringBuilder();
-            sb.append("# Trevas Batch: " + getDateNowAsString() + "\n\n");
+            sb.append("# Trevas Batch: ").append(getDateNowAsString()).append("\n\n");
 
             StringBuilder sparkSessionStringBuilder = new StringBuilder();
             LocalDateTime beforeSparkSession = LocalDateTime.now();
@@ -64,36 +64,46 @@ public class Engine {
             String script = batchConfiguration.getScript();
 
             sb.append("## Batch configuration\n\n");
-            sb.append("Configuration file fetched from: " + configPath + "\n\n");
+            sb.append("Configuration file fetched from: ").append(configPath).append("\n\n");
             sb.append("- Inputs: \n");
             inputs.forEach(i -> {
-                sb.append("    - " + i.getName() + " (" + i.getFormat() + "): " + i.getLocation() + "\n");
+                sb.append("    - ")
+                        .append(i.getName())
+                        .append(" (")
+                        .append(i.getFormat())
+                        .append("): ")
+                        .append(i.getLocation())
+                        .append("\n");
             });
             sb.append("- Outputs: \n");
             outputs.forEach(i -> {
-                sb.append("    - " + i.getName() + ": " + i.getLocation() + "\n");
+                sb.append("    - ")
+                        .append(i.getName())
+                        .append(": ")
+                        .append(i.getLocation())
+                        .append("\n");
             });
             sb.append("- Script: \n");
             sb.append("```\n");
-            sb.append(script + "\n");
+            sb.append(script).append("\n");
             sb.append("```\n\n");
 
             sb.append("## Spark configuration\n\n");
             Map<String, String> sparkConf = spark.conf().getAll();
             String sparkMaster = sparkConf.get("spark.master").isEmpty() ? "" : sparkConf.get("spark.master").get();
-            sb.append("- spark.master: " + sparkMaster + "\n");
+            sb.append("- spark.master: ").append(sparkMaster).append("\n");
             String sparkDriverMemory = sparkConf.get("spark.driver.memory").isEmpty() ? "" : sparkConf.get("spark.driver.memory").get();
-            sb.append("- spark.driver.memory: " + sparkDriverMemory + "\n");
+            sb.append("- spark.driver.memory: ").append(sparkDriverMemory).append("\n");
             String sparkExecutorMemory = sparkConf.get("spark.executor.memory").isEmpty() ? "" : sparkConf.get("spark.executor.memory").get();
-            sb.append("- spark.executor.memory: " + sparkExecutorMemory + "\n");
+            sb.append("- spark.executor.memory: ").append(sparkExecutorMemory).append("\n");
             String sparkExecutorRequestCores = sparkConf.get("spark.kubernetes.executor.request.cores").isEmpty() ? "" : sparkConf.get("spark.kubernetes.executor.request.cores").get();
-            sb.append("- spark.kubernetes.executor.request.cores: " + sparkExecutorRequestCores + "\n");
+            sb.append("- spark.kubernetes.executor.request.cores: ").append(sparkExecutorRequestCores).append("\n");
             String sparkDynamicAllocation = sparkConf.get("spark.dynamicAllocation.enabled").isEmpty() ? "" : sparkConf.get("spark.dynamicAllocation.enabled").get();
-            sb.append("- spark.dynamicAllocation.enabled: " + sparkDynamicAllocation + "\n");
+            sb.append("- spark.dynamicAllocation.enabled: ").append(sparkDynamicAllocation).append("\n");
             String sparkDynamicAllocationMinExec = sparkConf.get("spark.dynamicAllocation.minExecutors").isEmpty() ? "" : sparkConf.get("spark.dynamicAllocation.minExecutors").get();
-            sb.append("- spark.dynamicAllocation.minExecutors: " + sparkDynamicAllocationMinExec + "\n");
+            sb.append("- spark.dynamicAllocation.minExecutors: ").append(sparkDynamicAllocationMinExec).append("\n");
             String sparkDynamicAllocationMaxExec = sparkConf.get("spark.dynamicAllocation.maxExecutors").isEmpty() ? "" : sparkConf.get("spark.dynamicAllocation.maxExecutors").get();
-            sb.append("- spark.dynamicAllocation.maxExecutors: " + sparkDynamicAllocationMaxExec + "\n");
+            sb.append("- spark.dynamicAllocation.maxExecutors: ").append(sparkDynamicAllocationMaxExec).append("\n");
             sb.append("\n");
 
             sb.append("## Benchmarks\n\n");
@@ -103,40 +113,37 @@ public class Engine {
             ScriptEngine engine = SparkUtils.initEngineWithSpark(bindings, spark);
 
             AtomicLong readTime = new AtomicLong(0L);
-                    //MILLIS.between(beforeRead, afterRead);
+            //MILLIS.between(beforeRead, afterRead);
             // Load datasets
-            if (inputs != null) {
-                sb.append("### Loading input datasets\n\n");
-                inputs.forEach(input -> {
-                    logger.info("Start to load inputs");
-                    String name = input.getName();
-                    try {
-                        LocalDateTime beforeReadDs = LocalDateTime.now();
-                        var ds = readDataset(spark, input);
-                        LocalDateTime afterReadDs = LocalDateTime.now();
-                        long readDs = MILLIS.between(beforeReadDs, afterReadDs);
-                        readTime.set(readTime.get() + readDs);
-                        bindings.put(name, ds);
-                        // temp disable, not lazy?
-                        int columns = ds.getDataStructure().size();
-                        Dataset<Row> inputSparkDataset = ds.getSparkDataset();
-                        Long rows = inputSparkDataset.count();
-                        String dsRead = "- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n";
-                        sb.append(dsRead);
-                        logger.info(dsRead);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            }
+            sb.append("### Loading input datasets\n\n");
+            inputs.forEach(input -> {
+                logger.info("Start to load inputs");
+                String name = input.getName();
+                try {
+                    LocalDateTime beforeReadDs = LocalDateTime.now();
+                    var ds = readDataset(spark, input);
+                    LocalDateTime afterReadDs = LocalDateTime.now();
+                    long readDs = MILLIS.between(beforeReadDs, afterReadDs);
+                    readTime.set(readTime.get() + readDs);
+                    bindings.put(name, ds);
+                    // temp disable, not lazy?
+                    int columns = ds.getDataStructure().size();
+                    Dataset<Row> inputSparkDataset = ds.getSparkDataset();
+                    long rows = inputSparkDataset.count();
+                    String dsRead = "- dataset `" + name + "` was read in " + formatMs(readDs) + " milliseconds (" + formatMs(columns) + " columns, " + formatMs(rows) + " rows)\n";
+                    sb.append(dsRead);
+                    logger.info(dsRead);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
             sb.append("\n");
-            LocalDateTime afterRead = LocalDateTime.now();
             logger.info("Inputs loaded in " + readTime + "ms");
 
             // Load script
             LocalDateTime beforeScript = LocalDateTime.now();
             long scriptTime = 0;
-            if (script != null && !script.equals("")) {
+            if (script != null && !script.isEmpty()) {
                 try {
                     engine.eval(script);
                 } catch (Exception e) {
@@ -155,21 +162,21 @@ public class Engine {
             outputs.forEach(o -> {
                 Object ds = outputBindings.get(o.getName());
                 if (ds instanceof SparkDataset) {
-                    sb.append("#### " + o.getName() + "\n\n");
+                    sb.append("#### ").append(o.getName()).append("\n\n");
                     Dataset<Row> sparkDs = ((SparkDataset) ds).getSparkDataset();
                     String logicalPlan = sparkDs.queryExecution().logical().toString();
-                    sb.append("- logical plan:\n" + logicalPlan + "\n");
+                    sb.append("- logical plan:\n").append(logicalPlan).append("\n");
                     System.out.println("- logical plan:\n" + logicalPlan + "\n");
                     String optimizedPlan = sparkDs.queryExecution().optimizedPlan().toString();
-                    sb.append("- optimized plan:\n" + optimizedPlan + "\n");
+                    sb.append("- optimized plan:\n").append(optimizedPlan).append("\n");
                     String executedPlan = sparkDs.queryExecution().executedPlan().toString();
-                    sb.append("- executed plan:\n" + executedPlan + "\n\n");
+                    sb.append("- executed plan:\n").append(executedPlan).append("\n\n");
                 }
             });
 
             LocalDateTime beforeWrite = LocalDateTime.now();
             // Load datasets to write
-            if (outputs.size() > 0) {
+            if (!outputs.isEmpty()) {
                 sb.append("### Writing output datasets\n\n");
                 logger.info("Start to write outputs");
                 outputs.forEach(output -> {
@@ -197,14 +204,14 @@ public class Engine {
             long allMs = sparkSessionMs + readTime.get() + scriptTime + writeTime;
             sb.append("|Task|Duration (ms)|Percentage (%)|\n");
             sb.append("|-|:-:|:-:|\n");
-            sb.append("|Open Spark session|" + formatMs(sparkSessionMs) + "|" + sparkSessionMs * 100 / allMs + "|\n");
-            sb.append("|Spark inputs loading (" + inputs.size() + " ds)|" + formatMs(readTime.get()) + "|" + readTime.get() * 100 / allMs + "|\n");
-            sb.append("|VTL script execution|" + formatMs(scriptTime) + "|" + scriptTime * 100 / allMs + "|\n");
-            sb.append("|Spark outputs writing (" + outputs.size() + " ds)|" + formatMs(writeTime) + "|" + writeTime * 100 / allMs + "|\n");
-            sb.append("|**Total**|**" + formatMs(allMs) + "**|**100**|\n");
+            sb.append("|Open Spark session|").append(formatMs(sparkSessionMs)).append("|").append(sparkSessionMs * 100 / allMs).append("|\n");
+            sb.append("|Spark inputs loading (").append(inputs.size()).append(" ds)|").append(formatMs(readTime.get())).append("|").append(readTime.get() * 100 / allMs).append("|\n");
+            sb.append("|VTL script execution|").append(formatMs(scriptTime)).append("|").append(scriptTime * 100 / allMs).append("|\n");
+            sb.append("|Spark outputs writing (").append(outputs.size()).append(" ds)|").append(formatMs(writeTime)).append("|").append(writeTime * 100 / allMs).append("|\n");
+            sb.append("|**Total**|**").append(formatMs(allMs)).append("**|**100**|\n");
 
             // Write report
-            if (reportPath != null && !reportPath.equals("")) {
+            if (reportPath != null && !reportPath.isEmpty()) {
                 List<String> content = Arrays.asList(sb.toString().split("\n"));
                 JavaSparkContext.fromSparkContext(spark.sparkContext())
                         .parallelize(content)
